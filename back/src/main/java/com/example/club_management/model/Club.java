@@ -6,32 +6,38 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "books")
+@Table(name = "clubs")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class Book {
+public class Club {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column(nullable = false)
-    private String title;
+    private String name;
 
     @Column(nullable = false)
-    private String author;
-
-    @Column(length = 1000)
     private String description;
 
     @Column(nullable = false)
-    private Double price;
+    private String location;
 
-    @Column(name = "publication_year")
-    private Integer publicationYear;
+    @Column(name = "founding_year")
+    private Integer foundingYear;
 
-    @Column(name = "isbn", unique = true)
-    private String isbn;
+    @Column(name = "membership_fee")
+    private Double membershipFee;
+
+    @Column(name = "max_capacity")
+    private Integer maxCapacity;
+
+    @Column(name = "current_members")
+    private Integer currentMembers;
+
+    @Column(name = "contact_email")
+    private String contactEmail;
 
     @ManyToOne
     @JoinColumn(name = "user_id")

@@ -17,6 +17,9 @@ importers:
       '@radix-ui/react-slot':
         specifier: ^1.1.0
         version: 1.1.0(@types/react@18.3.12)(react@18.3.1)
+      '@stomp/stompjs':
+        specifier: ^7.0.0
+        version: 7.0.0
       '@tanstack/react-query':
         specifier: ^5.61.0
         version: 5.61.0(react@18.3.1)
@@ -681,6 +684,9 @@ packages:
     resolution: {integrity: sha512-vliZLrDmYKyaUoMzEbMTg2JkerfBjn03KmAw9CykO0Zzkzoyd7o3iZNam/TpyWNjNT+Cz2iO3P9Smv2wgrR+Eg==}
     cpu: [x64]
     os: [win32]
+
+  '@stomp/stompjs@7.0.0':
+    resolution: {integrity: sha512-fGdq4wPDnSV/KyOsjq4P+zLc8MFWC3lMmP5FBgLWKPJTYcuCbAIrnRGjB7q2jHZdYCOD5vxLuFoKIYLy5/u8Pw==}
 
   '@tanstack/query-core@5.60.6':
     resolution: {integrity: sha512-tI+k0KyCo1EBJ54vxK1kY24LWj673ujTydCZmzEZKAew4NqZzTaVQJEuaG1qKj2M03kUHN46rchLRd+TxVq/zQ==}
@@ -2492,6 +2498,8 @@ snapshots:
 
   '@rollup/rollup-win32-x64-msvc@4.27.3':
     optional: true
+
+  '@stomp/stompjs@7.0.0': {}
 
   '@tanstack/query-core@5.60.6': {}
 
