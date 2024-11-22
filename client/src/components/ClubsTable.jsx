@@ -134,7 +134,7 @@ export default function ClubsTable() {
 
   if (!isSignedIn) {
     return (
-      <div className="flex justify-center items-center min-h-screen bg-gray-50">
+      <div className="flex justify-center items-center h-full py-8">
         <SignIn />
       </div>
     );
@@ -142,7 +142,7 @@ export default function ClubsTable() {
 
   if (isLoading)
     return (
-      <div className="flex justify-center items-center min-h-screen bg-gray-50">
+      <div className="flex justify-center items-center h-[400px]">
         <div className="animate-pulse text-lg font-semibold text-gray-600">
           Loading clubs...
         </div>
@@ -151,7 +151,7 @@ export default function ClubsTable() {
 
   if (error)
     return (
-      <div className="flex justify-center items-center min-h-screen bg-gray-50">
+      <div className="flex justify-center items-center h-[400px]">
         <div className="text-red-500 bg-red-100 p-4 rounded-lg shadow">
           Error: {error.message}
         </div>
@@ -159,7 +159,7 @@ export default function ClubsTable() {
     );
 
   return (
-    <div className="p-8">
+    <div className="w-full">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-3xl font-bold">Clubs Directory</h2>
         <Dialog open={isModalOpen} onOpenChange={handleOpenChange}>
@@ -269,7 +269,7 @@ export default function ClubsTable() {
         </Dialog>
       </div>
 
-      <div className="border rounded-lg">
+      <div className="w-full overflow-x-auto border rounded-lg">
         <Table>
           <TableHeader>
             <TableRow>

@@ -42,6 +42,15 @@ export function useWebSocket() {
           return oldData.filter((club) => club.id !== clubId);
         });
       });
+
+      // New messages subscription
+      client.subscribe("/topic/messages", function (message) {
+        const newMessage = JSON.parse(message.body);
+        queryClient.setQueryData(["messages"], (oldData) => {
+          if (!oldData) return [newMessage];
+          return [...oldData, newMessage];
+        });
+      });
     };
 
     client.activate();

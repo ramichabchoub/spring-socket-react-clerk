@@ -1,19 +1,17 @@
-import ClubsTable from "./components/ClubsTable";
-import Header from "@/components/Header";
+import { RouterProvider } from "react-router-dom";
+import { router } from "./routes/router";
 import { useUserSync } from "./hooks/useUserSync";
 import { useWebSocket } from "./hooks/useWebSocket";
+import { SidebarProvider } from "./components/ui/sidebar";
 
 function App() {
   useUserSync();
   useWebSocket();
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <Header />
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <ClubsTable />
-      </main>
-    </div>
+    <SidebarProvider>
+      <RouterProvider router={router} />
+    </SidebarProvider>
   );
 }
 
