@@ -3,7 +3,8 @@ import { useUser } from "@clerk/clerk-react";
 import axios from "axios";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useWebSocket } from "@/hooks/useWebSocket";
 
 const fetchMessages = async () => {
   const { data } = await axios.get("http://localhost:8080/api/messages");
@@ -13,11 +14,52 @@ const fetchMessages = async () => {
 export default function Discussions() {
   const { user, isSignedIn } = useUser();
   const [message, setMessage] = useState("");
+  const stompClient = useWebSocket();
+  const typingTimeoutRef = useRef();
 
   const { data: messages, isLoading } = useQuery({
     queryKey: ["messages"],
     queryFn: fetchMessages,
   });
+
+  const { data: typingUsers = new Set() } = useQuery({
+    queryKey: ["typingUsers"],
+    initialData: new Set(),
+  });
+
+  const otherTypingUsers = useMemo(() => {
+    const others = new Set(typingUsers);
+    if (user?.username) {
+      others.delete(user.username);
+    }
+    return others;
+  }, [typingUsers, user?.username]);
+
+  const renderTypingIndicator = () => {
+    if (otherTypingUsers.size === 0) return null;
+
+    const typingList = Array.from(otherTypingUsers);
+    if (typingList.length === 1) {
+      return (
+        <div className="px-4 text-sm text-muted-foreground italic">
+          {typingList[0]} is typing...
+        </div>
+      );
+    } else if (typingList.length === 2) {
+      return (
+        <div className="px-4 text-sm text-muted-foreground italic">
+          {typingList[0]} and {typingList[1]} are typing...
+        </div>
+      );
+    } else {
+      return (
+        <div className="px-4 text-sm text-muted-foreground italic">
+          {typingList[0]}, {typingList[1]} and {typingList.length - 2} more are
+          typing...
+        </div>
+      );
+    }
+  };
 
   const sendMessageMutation = useMutation({
     mutationFn: (newMessage) =>
@@ -29,11 +71,57 @@ export default function Discussions() {
     },
   });
 
+  const sendTypingStatus = useCallback(
+    (isTyping) => {
+      if (stompClient && user) {
+        const username =
+          user.username ||
+          user.firstName ||
+          user.primaryEmailAddress?.emailAddress;
+        stompClient.publish({
+          destination: "/app/typing",
+          body: JSON.stringify({
+            username,
+            typing: isTyping,
+          }),
+        });
+      }
+    },
+    [stompClient, user]
+  );
+
+  const handleInputChange = (e) => {
+    setMessage(e.target.value);
+
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+
+    sendTypingStatus(true);
+
+    typingTimeoutRef.current = setTimeout(() => {
+      sendTypingStatus(false);
+    }, 1000);
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!message.trim()) return;
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+    sendTypingStatus(false);
     sendMessageMutation.mutate(message);
   };
+
+  useEffect(() => {
+    return () => {
+      sendTypingStatus(false);
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+    };
+  }, [sendTypingStatus]);
 
   if (!isSignedIn) {
     return (
@@ -89,11 +177,13 @@ export default function Discussions() {
         ))}
       </div>
 
+      {renderTypingIndicator()}
+
       <form onSubmit={handleSubmit} className="p-4 border-t">
         <div className="flex gap-2">
           <Input
             value={message}
-            onChange={(e) => setMessage(e.target.value)}
+            onChange={handleInputChange}
             placeholder="Type your message..."
             className="flex-1"
           />

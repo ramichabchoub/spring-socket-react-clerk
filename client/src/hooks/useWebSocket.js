@@ -1,9 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Client } from "@stomp/stompjs";
 import { useQueryClient } from "@tanstack/react-query";
 
 export function useWebSocket() {
   const queryClient = useQueryClient();
+  const clientRef = useRef(null);
 
   useEffect(() => {
     const client = new Client({
@@ -48,12 +49,30 @@ export function useWebSocket() {
           return [...oldData, newMessage];
         });
       });
+
+      client.subscribe("/topic/typing", function (message) {
+        const typingStatus = JSON.parse(message.body);
+        queryClient.setQueryData(["typingUsers"], (oldData) => {
+          const newSet = new Set(
+            typeof oldData === "object" ? oldData : new Set()
+          );
+          if (typingStatus.typing) {
+            newSet.add(typingStatus.username);
+          } else {
+            newSet.delete(typingStatus.username);
+          }
+          return newSet;
+        });
+      });
     };
 
+    clientRef.current = client;
     client.activate();
 
     return () => {
       client.deactivate();
     };
   }, [queryClient]);
+
+  return clientRef.current;
 }
