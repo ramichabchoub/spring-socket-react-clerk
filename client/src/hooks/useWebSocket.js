@@ -1,10 +1,25 @@
 import { useEffect } from "react";
 import { Client } from "@stomp/stompjs";
-import { useQueryClient } from "@tanstack/react-query";
+
+// Create a simple event emitter
+const listeners = new Map();
+
+export const websocketEvents = {
+  subscribe: (event, callback) => {
+    if (!listeners.has(event)) {
+      listeners.set(event, new Set());
+    }
+    listeners.get(event).add(callback);
+    return () => listeners.get(event).delete(callback);
+  },
+  emit: (event, data) => {
+    if (listeners.has(event)) {
+      listeners.get(event).forEach((callback) => callback(data));
+    }
+  },
+};
 
 export function useWebSocket() {
-  const queryClient = useQueryClient();
-
   useEffect(() => {
     const client = new Client({
       brokerURL: "ws://localhost:8080/ws/websocket",
@@ -19,37 +34,22 @@ export function useWebSocket() {
     client.onConnect = function () {
       console.log("Connected to WebSocket");
 
-      // Add club subscriptions
-      client.subscribe("/topic/clubs", function (message) {
-        const club = JSON.parse(message.body);
-        queryClient.setQueryData(["clubs"], (oldData) => {
-          if (!oldData) return [club];
-          const index = oldData.findIndex((c) => c.id === club.id);
-          if (index === -1) {
-            return [...oldData, club];
-          }
-          const newData = [...oldData];
-          newData[index] = club;
-          return newData;
-        });
-      });
-
-      // Subscribe to club deletions
-      client.subscribe("/topic/clubs/delete", function (message) {
-        const clubId = JSON.parse(message.body);
-        queryClient.setQueryData(["clubs"], (oldData) => {
-          if (!oldData) return [];
-          return oldData.filter((club) => club.id !== clubId);
-        });
-      });
-
-      // New messages subscription
+      // Messages subscription
       client.subscribe("/topic/messages", function (message) {
         const newMessage = JSON.parse(message.body);
-        queryClient.setQueryData(["messages"], (oldData) => {
-          if (!oldData) return [newMessage];
-          return [...oldData, newMessage];
-        });
+        websocketEvents.emit("newMessage", newMessage);
+      });
+
+      // Clubs subscription
+      client.subscribe("/topic/clubs", function (message) {
+        const club = JSON.parse(message.body);
+        websocketEvents.emit("clubUpdate", club);
+      });
+
+      // Club deletions subscription
+      client.subscribe("/topic/clubs/delete", function (message) {
+        const clubId = JSON.parse(message.body);
+        websocketEvents.emit("clubDelete", clubId);
       });
     };
 
@@ -58,5 +58,5 @@ export function useWebSocket() {
     return () => {
       client.deactivate();
     };
-  }, [queryClient]);
+  }, []);
 }

@@ -1,39 +1,61 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
 import { useUser } from "@clerk/clerk-react";
 import axios from "axios";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useState } from "react";
-
-const fetchMessages = async () => {
-  const { data } = await axios.get("http://localhost:8080/api/messages");
-  return data;
-};
+import { websocketEvents } from "@/hooks/useWebSocket";
 
 export default function Discussions() {
   const { user, isSignedIn } = useUser();
   const [message, setMessage] = useState("");
-  const queryClient = useQueryClient();
+  const [messages, setMessages] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const { data: messages, isLoading } = useQuery({
-    queryKey: ["messages"],
-    queryFn: fetchMessages,
-  });
+  // Initial fetch of messages
+  useEffect(() => {
+    const fetchMessages = async () => {
+      try {
+        const { data } = await axios.get("http://localhost:8080/api/messages");
+        setMessages(data);
+      } catch (error) {
+        console.error("Error fetching messages:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  const sendMessageMutation = useMutation({
-    mutationFn: (newMessage) =>
-      axios.post(`http://localhost:8080/api/messages?clerkId=${user.id}`, {
-        content: newMessage,
-      }),
-    onSuccess: () => {
-      setMessage("");
-    },
-  });
+    fetchMessages();
+  }, []);
 
-  const handleSubmit = (e) => {
+  // WebSocket subscription for new messages
+  useEffect(() => {
+    const messageUnsub = websocketEvents.subscribe(
+      "newMessage",
+      (newMessage) => {
+        setMessages((currentMessages) => [...currentMessages, newMessage]);
+      }
+    );
+
+    return () => {
+      messageUnsub();
+    };
+  }, []);
+
+  const sendMessage = async (e) => {
     e.preventDefault();
     if (!message.trim()) return;
-    sendMessageMutation.mutate(message);
+
+    try {
+      await axios.post(
+        `http://localhost:8080/api/messages?clerkId=${user.id}`,
+        {
+          content: message,
+        }
+      );
+      setMessage("");
+    } catch (error) {
+      console.error("Error sending message:", error);
+    }
   };
 
   if (!isSignedIn) {
@@ -90,7 +112,7 @@ export default function Discussions() {
         ))}
       </div>
 
-      <form onSubmit={handleSubmit} className="p-4 border-t">
+      <form onSubmit={sendMessage} className="p-4 border-t">
         <div className="flex gap-2">
           <Input
             value={message}
