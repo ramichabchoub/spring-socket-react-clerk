@@ -3,7 +3,7 @@ import { useUser } from "@clerk/clerk-react";
 import axios from "axios";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 
 const fetchMessages = async () => {
   const { data } = await axios.get("http://localhost:8080/api/messages");
@@ -13,11 +13,45 @@ const fetchMessages = async () => {
 export default function Discussions() {
   const { user, isSignedIn } = useUser();
   const [message, setMessage] = useState("");
+  const messageContainerRef = useRef(null);
 
   const { data: messages, isLoading } = useQuery({
     queryKey: ["messages"],
     queryFn: fetchMessages,
   });
+
+  const scrollToBottom = () => {
+    if (messageContainerRef.current) {
+      messageContainerRef.current.scrollTop =
+        messageContainerRef.current.scrollHeight;
+    }
+  };
+
+  useEffect(() => {
+    const scrollWithDelay = () => {
+      const timeouts = [0, 100, 500];
+      timeouts.forEach((timeout) => {
+        setTimeout(scrollToBottom, timeout);
+      });
+    };
+
+    if (messages && !isLoading) {
+      scrollWithDelay();
+    }
+  }, [messages, isLoading]);
+
+  useEffect(() => {
+    const messageObserver = new MutationObserver(scrollToBottom);
+
+    if (messageContainerRef.current) {
+      messageObserver.observe(messageContainerRef.current, {
+        childList: true,
+        subtree: true,
+      });
+    }
+
+    return () => messageObserver.disconnect();
+  }, []);
 
   const sendMessageMutation = useMutation({
     mutationFn: (newMessage) =>
@@ -26,6 +60,7 @@ export default function Discussions() {
       }),
     onSuccess: () => {
       setMessage("");
+      scrollToBottom();
     },
   });
 
@@ -53,7 +88,10 @@ export default function Discussions() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)]">
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div
+        ref={messageContainerRef}
+        className="flex-1 overflow-y-auto p-4 space-y-4"
+      >
         {messages?.map((msg) => (
           <div
             key={msg.id}
