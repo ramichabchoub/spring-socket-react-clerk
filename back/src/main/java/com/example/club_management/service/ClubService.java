@@ -7,6 +7,7 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -16,6 +17,7 @@ public class ClubService {
     private final ClubRepository clubRepository;
     private final UserService userService;
     private final SimpMessagingTemplate messagingTemplate;
+    private final FileStorageService fileStorageService;
 
     public List<Club> getAllClubs() {
         return clubRepository.findAll();
@@ -60,5 +62,26 @@ public class ClubService {
         Club club = getClubById(id);
         clubRepository.delete(club);
         messagingTemplate.convertAndSend("/topic/clubs/delete", id);
+    }
+
+    public Club updateBanner(Long id, MultipartFile file, String clerkId) {
+        Club club = getClubById(id);
+
+        if (!club.getUser().getClerkId().equals(clerkId)) {
+            throw new RuntimeException("Unauthorized to update this club");
+        }
+
+        // Delete old banner if exists
+        if (club.getBannerUrl() != null) {
+            fileStorageService.deleteFile(club.getBannerUrl());
+        }
+
+        // Store new banner
+        String fileName = fileStorageService.storeFile(file);
+        club.setBannerUrl(fileName);
+
+        Club updatedClub = clubRepository.save(club);
+        messagingTemplate.convertAndSend("/topic/clubs", updatedClub);
+        return updatedClub;
     }
 }

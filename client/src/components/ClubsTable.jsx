@@ -19,6 +19,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Upload } from "lucide-react";
 
 const fetchClubs = async () => {
   await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -79,6 +80,31 @@ export default function ClubsTable() {
     },
   });
 
+  const uploadBannerMutation = useMutation({
+    mutationFn: async ({ id, file }) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("clerkId", user.id);
+
+      return axios.post(
+        `http://localhost:8080/api/clubs/${id}/banner`,
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(["clubs"]);
+    },
+    onError: (error) => {
+      console.error("Upload failed:", error);
+      // You might want to add some error notification here
+    },
+  });
+
   const handleSubmit = (e) => {
     e.preventDefault();
     const submitData = {
@@ -130,6 +156,24 @@ export default function ClubsTable() {
     if (!open) {
       resetForm();
     }
+  };
+
+  const handleBannerUpload = (id) => {
+    // Create a file input element
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+
+    // Handle file selection
+    input.onchange = (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        uploadBannerMutation.mutate({ id, file });
+      }
+    };
+
+    // Trigger the file dialog
+    input.click();
   };
 
   if (!isSignedIn) {
@@ -282,6 +326,7 @@ export default function ClubsTable() {
               <TableHead>Founded Year</TableHead>
               <TableHead>Contact Email</TableHead>
               <TableHead>Actions</TableHead>
+              <TableHead>Banner</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -316,6 +361,39 @@ export default function ClubsTable() {
                       onClick={() => handleDelete(club.id)}
                     >
                       Delete
+                    </Button>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    {club.bannerUrl && (
+                      <img
+                        src={`http://localhost:8080/uploads/${club.bannerUrl}`}
+                        alt={`${club.name} banner`}
+                        className="w-16 h-16 object-cover rounded"
+                        onError={(e) => {
+                          console.error("Error loading image:", e);
+                          e.target.src = "placeholder-image-url"; // Optional: provide a fallback image
+                        }}
+                      />
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleBannerUpload(club.id)}
+                      disabled={uploadBannerMutation.isLoading}
+                    >
+                      {uploadBannerMutation.isLoading ? (
+                        <div className="flex items-center">
+                          <div className="animate-spin mr-2">⌛</div>
+                          Uploading...
+                        </div>
+                      ) : (
+                        <>
+                          <Upload className="w-4 h-4 mr-2" />
+                          {club.bannerUrl ? "Update Banner" : "Add Banner"}
+                        </>
+                      )}
                     </Button>
                   </div>
                 </TableCell>

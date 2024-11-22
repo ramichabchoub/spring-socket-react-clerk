@@ -42,4 +42,7 @@ public class Club {
     @ManyToOne
     @JoinColumn(name = "user_id")
     private User user;
+
+    @Column(name = "banner_url")
+    private String bannerUrl;
 }
