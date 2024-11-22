@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { SignIn, useUser } from "@clerk/clerk-react";
-import { websocketEvents } from "@/hooks/useWebSocket";
+import { useState } from "react";
 import {
   Table,
   TableBody,
@@ -20,11 +20,15 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 
+const fetchClubs = async () => {
+  await new Promise((resolve) => setTimeout(resolve, 2000));
+  const { data } = await axios.get("http://localhost:8080/api/clubs");
+  return data;
+};
+
 export default function ClubsTable() {
   const { isSignedIn, user } = useUser();
-  const [clubs, setClubs] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedClub, setSelectedClub] = useState(null);
   const [formData, setFormData] = useState({
@@ -36,84 +40,44 @@ export default function ClubsTable() {
     contactEmail: "",
   });
 
-  // Initial fetch of clubs
-  useEffect(() => {
-    const fetchClubs = async () => {
-      try {
-        const { data } = await axios.get("http://localhost:8080/api/clubs");
-        setClubs(data);
-      } catch (err) {
-        setError(err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const {
+    data: clubs,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ["clubs"],
+    queryFn: fetchClubs,
+  });
 
-    fetchClubs();
-  }, []);
-
-  // WebSocket subscriptions
-  useEffect(() => {
-    const clubUpdateUnsub = websocketEvents.subscribe("clubUpdate", (club) => {
-      setClubs((currentClubs) => {
-        const index = currentClubs.findIndex((c) => c.id === club.id);
-        if (index === -1) {
-          return [...currentClubs, club];
-        }
-        const newClubs = [...currentClubs];
-        newClubs[index] = club;
-        return newClubs;
-      });
-    });
-
-    const clubDeleteUnsub = websocketEvents.subscribe(
-      "clubDelete",
-      (clubId) => {
-        setClubs((currentClubs) =>
-          currentClubs.filter((club) => club.id !== clubId)
-        );
-      }
-    );
-
-    return () => {
-      clubUpdateUnsub();
-      clubDeleteUnsub();
-    };
-  }, []);
-
-  const createClub = async (newClub) => {
-    try {
-      await axios.post(
-        `http://localhost:8080/api/clubs?clerkId=${user.id}`,
-        newClub
-      );
+  const createClubMutation = useMutation({
+    mutationFn: (newClub) =>
+      axios.post(`http://localhost:8080/api/clubs?clerkId=${user.id}`, newClub),
+    onSuccess: () => {
+      queryClient.invalidateQueries(["clubs"]);
       setIsModalOpen(false);
       resetForm();
-    } catch (error) {
-      console.error("Error creating club:", error);
-    }
-  };
+    },
+  });
 
-  const updateClub = async ({ id, club }) => {
-    try {
-      await axios.put(
+  const updateClubMutation = useMutation({
+    mutationFn: ({ id, club }) =>
+      axios.put(
         `http://localhost:8080/api/clubs/${id}?clerkId=${user.id}`,
         club
-      );
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries(["clubs"]);
       setIsModalOpen(false);
       resetForm();
-    } catch (error) {
-      console.error("Error updating club:", error);
-    }
-  };
+    },
+  });
 
-  const deleteClub = async (id) => {
-    try {
-      await axios.delete(`http://localhost:8080/api/clubs/${id}`);
-    } catch (error) {
-      console.error("Error deleting club:", error);
-    }
-  };
+  const deleteClubMutation = useMutation({
+    mutationFn: (id) => axios.delete(`http://localhost:8080/api/clubs/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries(["clubs"]);
+    },
+  });
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -124,9 +88,9 @@ export default function ClubsTable() {
     };
 
     if (selectedClub) {
-      updateClub({ id: selectedClub.id, club: submitData });
+      updateClubMutation.mutate({ id: selectedClub.id, club: submitData });
     } else {
-      createClub(submitData);
+      createClubMutation.mutate(submitData);
     }
   };
 
@@ -145,7 +109,7 @@ export default function ClubsTable() {
 
   const handleDelete = (id) => {
     if (window.confirm("Are you sure you want to delete this club?")) {
-      deleteClub(id);
+      deleteClubMutation.mutate(id);
     }
   };
 

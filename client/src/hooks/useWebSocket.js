@@ -1,25 +1,10 @@
 import { useEffect } from "react";
 import { Client } from "@stomp/stompjs";
-
-// Create a simple event emitter
-const listeners = new Map();
-
-export const websocketEvents = {
-  subscribe: (event, callback) => {
-    if (!listeners.has(event)) {
-      listeners.set(event, new Set());
-    }
-    listeners.get(event).add(callback);
-    return () => listeners.get(event).delete(callback);
-  },
-  emit: (event, data) => {
-    if (listeners.has(event)) {
-      listeners.get(event).forEach((callback) => callback(data));
-    }
-  },
-};
+import { useQueryClient } from "@tanstack/react-query";
 
 export function useWebSocket() {
+  const queryClient = useQueryClient();
+
   useEffect(() => {
     const client = new Client({
       brokerURL: "ws://localhost:8080/ws/websocket",
@@ -34,22 +19,37 @@ export function useWebSocket() {
     client.onConnect = function () {
       console.log("Connected to WebSocket");
 
-      // Messages subscription
-      client.subscribe("/topic/messages", function (message) {
-        const newMessage = JSON.parse(message.body);
-        websocketEvents.emit("newMessage", newMessage);
-      });
-
-      // Clubs subscription
+      // Add club subscriptions
       client.subscribe("/topic/clubs", function (message) {
         const club = JSON.parse(message.body);
-        websocketEvents.emit("clubUpdate", club);
+        queryClient.setQueryData(["clubs"], (oldData) => {
+          if (!oldData) return [club];
+          const index = oldData.findIndex((c) => c.id === club.id);
+          if (index === -1) {
+            return [...oldData, club];
+          }
+          const newData = [...oldData];
+          newData[index] = club;
+          return newData;
+        });
       });
 
-      // Club deletions subscription
+      // Subscribe to club deletions
       client.subscribe("/topic/clubs/delete", function (message) {
         const clubId = JSON.parse(message.body);
-        websocketEvents.emit("clubDelete", clubId);
+        queryClient.setQueryData(["clubs"], (oldData) => {
+          if (!oldData) return [];
+          return oldData.filter((club) => club.id !== clubId);
+        });
+      });
+
+      // New messages subscription
+      client.subscribe("/topic/messages", function (message) {
+        const newMessage = JSON.parse(message.body);
+        queryClient.setQueryData(["messages"], (oldData) => {
+          if (!oldData) return [newMessage];
+          return [...oldData, newMessage];
+        });
       });
     };
 
@@ -58,5 +58,5 @@ export function useWebSocket() {
     return () => {
       client.deactivate();
     };
-  }, []);
+  }, [queryClient]);
 }
