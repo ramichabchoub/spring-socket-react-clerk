@@ -11,7 +11,6 @@ if (!PUBLISHABLE_KEY) {
   throw new Error("Missing Publishable Key");
 }
 
-// Create a client
 const queryClient = new QueryClient();
 
 ReactDOM.createRoot(document.getElementById("root")).render(

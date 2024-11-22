@@ -8,18 +8,17 @@ export function useWebSocket() {
   useEffect(() => {
     const client = new Client({
       brokerURL: "ws://localhost:8080/ws/websocket",
-      debug: function (str) {
-        console.log(str);
-      },
+      // debug: function (str) {
+      //   console.log(str);
+      // },
       reconnectDelay: 5000,
       heartbeatIncoming: 4000,
       heartbeatOutgoing: 4000,
     });
 
     client.onConnect = function () {
-      console.log("Connected to WebSocket");
+      // console.log("Connected to WebSocket");
 
-      // Add club subscriptions
       client.subscribe("/topic/clubs", function (message) {
         const club = JSON.parse(message.body);
         queryClient.setQueryData(["clubs"], (oldData) => {
@@ -34,7 +33,6 @@ export function useWebSocket() {
         });
       });
 
-      // Subscribe to club deletions
       client.subscribe("/topic/clubs/delete", function (message) {
         const clubId = JSON.parse(message.body);
         queryClient.setQueryData(["clubs"], (oldData) => {
@@ -43,7 +41,6 @@ export function useWebSocket() {
         });
       });
 
-      // New messages subscription
       client.subscribe("/topic/messages", function (message) {
         const newMessage = JSON.parse(message.body);
         queryClient.setQueryData(["messages"], (oldData) => {

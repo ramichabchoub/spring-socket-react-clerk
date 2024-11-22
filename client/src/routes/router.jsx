@@ -3,20 +3,30 @@ import RootLayout from "@/components/layout/RootLayout";
 import ClubsTable from "@/components/ClubsTable";
 import Discussions from "@/components/Discussions";
 
-export const router = createBrowserRouter([
+export const router = createBrowserRouter(
+  [
+    {
+      path: "/",
+      element: <RootLayout />,
+      children: [
+        {
+          index: true,
+          element: <ClubsTable />,
+        },
+        {
+          path: "discussions",
+          element: <Discussions />,
+        },
+      ],
+    },
+  ],
   {
-    path: "/",
-    element: <RootLayout />,
-    children: [
-      {
-        index: true,
-        element: <ClubsTable />,
-      },
-      {
-        path: "discussions",
-        element: <Discussions />,
-      },
-      // Add more routes here as needed
-    ],
-  },
-]);
+    future: {
+      v7_relativeSplatPath: true,
+      v7_fetcherPersist: true,
+      v7_normalizeFormMethod: true,
+      v7_skipActionErrorRevalidation: true,
+      v7_partialHydration: true,
+    },
+  }
+);

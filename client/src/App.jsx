@@ -10,7 +10,13 @@ function App() {
 
   return (
     <SidebarProvider>
-      <RouterProvider router={router} />
+      <RouterProvider
+        router={router}
+        future={{
+          v7_startTransition: true,
+          v7_partialHydration: true,
+        }}
+      />
     </SidebarProvider>
   );
 }
